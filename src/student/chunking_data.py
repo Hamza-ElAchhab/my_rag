@@ -129,7 +129,6 @@ def chunk_text_file(file_path: str, content: str, max_chunk_size: int = 2000) ->
 
 
 def chunk_python_file(file_path: str, content: str, max_chunk_size: int = 2000) -> List[Chunk]:
-    
     res: List[Chunk] = []
     
     try:
@@ -146,7 +145,7 @@ def chunk_python_file(file_path: str, content: str, max_chunk_size: int = 2000) 
         
         lines = content.split("\n")
         offsets = lines_offsets(lines)
-        
+
         for node in top_level:
             start_line = node.lineno - 1
             end_line = node.end_lineno
@@ -165,7 +164,13 @@ def chunk_python_file(file_path: str, content: str, max_chunk_size: int = 2000) 
                     res.extend(inner_chunks)
             
             else:
-                obj = Chunk(file_path, node_content, start_char, end_char, "python")
+                obj = obj = Chunk(
+                file_path=file_path,
+                content=node_content,
+                first_character_index=start_char,
+                last_character_index=end_char,
+                chunk_type="python"
+            )
                 res.append(obj)
 
         if top_level:
@@ -174,7 +179,7 @@ def chunk_python_file(file_path: str, content: str, max_chunk_size: int = 2000) 
                 above_data = content[:first_node_start_index].strip()
                 if above_data:
                     above_chunks = split_large_chunk(file_path, above_data, 0, max_chunk_size, "python")
-                    res = res + above_chunks
+                    res = above_chunks + res
 
     except SyntaxError:
         return chunk_text_file(file_path, content, max_chunk_size)
@@ -186,32 +191,56 @@ def chunk_python_file(file_path: str, content: str, max_chunk_size: int = 2000) 
 
 
 
-content = """import sys
 
-class koko:
-    def get():
-        return 2
+def chunk_repository(repo_path: str, max_chunk_size: int = 2000) -> List[Chunk]:
+    res: List[Chunk] = []
+    all_files = []
 
-def greet(name):
-    print("Hello %s" % name)"""
+    
 
 
 
 
-# res = chunk_python_file("file", content, max_chunk_size=10)
+# def chunk_repository(
+#     repo_path: str, max_chunk_size: int = 2000
+# ) -> List[Chunk]:
 
+#     all_chunks: List[Chunk] = []
+#     all_files = []
 
-# for o in res:
-#     print(o.chunk_type)
-#     print(o.first_character_index)
-#     print(o.last_character_index)
-#     print(o.content)
-#     print(o.file_path)
-#     print("=" * 40)
+#     for root, dirs, files in os.walk(repo_path):
+#         # Skip hidden directories and common non-source dirs
+#         dirs[:] = [
+#             d for d in dirs
+#             if not d.startswith(".")
+#             and d not in {"__pycache__", "node_modules", ".git", "build", "dist"}
+#         ]
 
-s = """my name
+#         for fname in files:
+#             ext = os.path.splitext(fname)[1].lower()
+#             if ext in SKIP_EXTENSIONS:
+#                 continue
+#             if ext not in PYTHON_EXTENSIONS and ext not in TEXT_EXTENSIONS:
+#                 continue
+#             all_files.append(os.path.join(root, fname))
 
+#     for fpath in tqdm(all_files, desc="Chunking files"):
+#         try:
+#             with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
+#                 content = f.read()
 
-is hamza"""
+#             if not content.strip():
+#                 continue
 
-print(s.split("\n"))
+#             ext = os.path.splitext(fpath)[1].lower()
+#             if ext in PYTHON_EXTENSIONS:
+#                 chunks = chunk_python_file(fpath, content, max_chunk_size)
+#             else:
+#                 chunks = chunk_text_file(fpath, content, max_chunk_size)
+
+#             all_chunks.extend(chunks)
+
+#         except Exception as e:
+#             print(f"Warning: could not process {fpath}: {e}")
+
+#     return all_chunks
