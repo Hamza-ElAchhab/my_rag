@@ -192,11 +192,11 @@ def chunk_code_string_file(file_path: str, content: str, max_chunk_size: int = 2
 
 
 
-
+# node_modules/build/dist
 def chunk_repository(repo_path: str, max_chunk_size: int = 2000) -> List[Chunk]:
 
     res_output: List[Chunk] = []
-    all_files_path = []
+    all_files_path: List[str] = []
 
     for root, dirs, files in os.walk(repo_path):
         dirs[:] = [d for d in dirs if not d.startswith(".") and d not in {"__pycache__", ".git"}]
@@ -225,9 +225,13 @@ def chunk_repository(repo_path: str, max_chunk_size: int = 2000) -> List[Chunk]:
             if extention in PYTHON_EXTENSIONS:
                 res_chunks = chunk_code_string_file(the_path, content_file_data, max_chunk_size)
                 
-            if extention in TEXT_EXTENSIONS:
+            elif extention in TEXT_EXTENSIONS:
                 res_chunks = chunking_text_string_file(the_path, content_file_data, max_chunk_size)
-            
+
+            #imposible exec
+            else:
+                continue
+
             res_output.extend(res_chunks)
             
         except Exception as err:
@@ -235,7 +239,7 @@ def chunk_repository(repo_path: str, max_chunk_size: int = 2000) -> List[Chunk]:
         
     return res_output
 
-        
+
 
 
 
