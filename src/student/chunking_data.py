@@ -7,6 +7,7 @@ import os
 from tqdm import tqdm
 
 
+
 PYTHON_EXTENSIONS = {".py"}
 TEXT_EXTENSIONS = {".md", ".txt", ".yaml", ".yml", ".toml"}
 SKIP_EXTENSIONS = {
