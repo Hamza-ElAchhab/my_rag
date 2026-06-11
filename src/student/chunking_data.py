@@ -3,6 +3,8 @@ from student.classes_types import Chunk
 from typing import List
 import re
 import ast
+import os
+from tqdm import tqdm
 
 
 PYTHON_EXTENSIONS = {".py"}
@@ -193,44 +195,57 @@ def chunk_python_file(file_path: str, content: str, max_chunk_size: int = 2000) 
 
 
 def chunk_repository(repo_path: str, max_chunk_size: int = 2000) -> List[Chunk]:
-    res: List[Chunk] = []
+
+    res_output: List[Chunk] = []
     all_files = []
 
-    
+    for root, dirs, files in os.walk(repo_path):
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in {"__pycache__", ".git"}]
+        
+        for file in files:
+            extention = os.path.splitext(file)[1].lower()
+            #skip
+            if extention in SKIP_EXTENSIONS:
+                continue
+            if extention not in PYTHON_EXTENSIONS and extention not in TEXT_EXTENSIONS:
+                continue
+
+            full_path_from_data_root = os.path.join(root, file)
+            all_files.append(full_path_from_data_root)
+
+    for the_path in tqdm(all_files, desc="Currently Chunking Progress"):
+        try:
+            with open(the_path, "r") as f:
+                content_data = f.read()
+                
+            if not content_data.strip():
+                continue
+            
+            extention = os.path.splitext(the_path)[1].lower()
+            
+            if extention in PYTHON_EXTENSIONS:
+                res_chunks = chunk_python_file(the_path, content_data, max_chunk_size)
+                
+            if extention in TEXT_EXTENSIONS:
+                res_chunks = chunk_text_file(the_path, content_data, max_chunk_size)
+            
+            res_output.extend(res_chunks)
+            
+        except Exception as err:
+            print(f"Error: While Process in Chunking Stage, Reason {err}")
+        
+    return res_output
+
+            
+            
+                
+                
+        
 
 
 
+print(len(chunk_repository("data/raw/vllm-0.10.1")))
 
-# def chunk_repository(
-#     repo_path: str, max_chunk_size: int = 2000
-# ) -> List[Chunk]:
-
-#     all_chunks: List[Chunk] = []
-#     all_files = []
-
-#     for root, dirs, files in os.walk(repo_path):
-#         # Skip hidden directories and common non-source dirs
-#         dirs[:] = [
-#             d for d in dirs
-#             if not d.startswith(".")
-#             and d not in {"__pycache__", "node_modules", ".git", "build", "dist"}
-#         ]
-
-#         for fname in files:
-#             ext = os.path.splitext(fname)[1].lower()
-#             if ext in SKIP_EXTENSIONS:
-#                 continue
-#             if ext not in PYTHON_EXTENSIONS and ext not in TEXT_EXTENSIONS:
-#                 continue
-#             all_files.append(os.path.join(root, fname))
-
-#     for fpath in tqdm(all_files, desc="Chunking files"):
-#         try:
-#             with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
-#                 content = f.read()
-
-#             if not content.strip():
-#                 continue
 
 #             ext = os.path.splitext(fpath)[1].lower()
 #             if ext in PYTHON_EXTENSIONS:
@@ -244,3 +259,5 @@ def chunk_repository(repo_path: str, max_chunk_size: int = 2000) -> List[Chunk]:
 #             print(f"Warning: could not process {fpath}: {e}")
 
 #     return all_chunks
+
+
