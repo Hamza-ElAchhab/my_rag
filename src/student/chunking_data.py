@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 
 PYTHON_EXTENSIONS = {".py"}
-TEXT_EXTENSIONS = {".md", ".rst", ".txt", ".yaml", ".yml", ".toml", ".cfg", ".ini"}
+TEXT_EXTENSIONS = {".md", ".txt", ".yaml", ".yml", ".toml"}
 SKIP_EXTENSIONS = {
     ".pyc", ".pyo", ".so", ".o", ".a", ".lib", ".dll", ".exe",
     ".jpg", ".jpeg", ".png", ".gif", ".svg", ".ico",
