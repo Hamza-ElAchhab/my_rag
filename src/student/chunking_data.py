@@ -18,7 +18,7 @@ SKIP_EXTENSIONS = {
 }
 
 
-def lines_offsets(lines: List[str]) -> List[int]:
+def offset_lines_func(lines: List[str]) -> List[int]:
     offsets = [0]
     for line in lines:
         offsets.append(offsets[-1] + len(line) + 1)
@@ -32,7 +32,7 @@ def split_large_chunk(
     lines = content.split("\n")
     chunk = ""
     offset = start_offset
-    res = []
+    result = []
 
     for ln in lines:
 
@@ -42,26 +42,33 @@ def split_large_chunk(
         
         else:
             if chunk.strip():
-                obj = Chunk(file_path=file_path, content=chunk,first_character_index=offset,
-                            last_character_index=len(chunk) + offset, chunk_type=chunk_type)
-                res.append(obj)
-            
+                obj = Chunk(file_path=file_path,
+                            content=chunk,
+                            first_character_index=offset,
+                            last_character_index=len(chunk) + offset,
+                            chunk_type=chunk_type
+                        )
+                result.append(obj)
+
             offset += len(chunk)
             chunk = ln_with_newline
 
     if chunk.strip():
-        obj = Chunk(file_path=file_path, content=chunk,first_character_index=offset,
-                    last_character_index=len(chunk) + offset, chunk_type=chunk_type)
-        res.append(obj)
-    return res
+        obj = Chunk(file_path=file_path,
+                    content=chunk,
+                    first_character_index=offset,
+                    last_character_index=len(chunk) + offset,
+                    chunk_type=chunk_type
+                )
+        result.append(obj)
+    return result
 
 
 
 
-def chunk_text_file(file_path: str, content: str, max_chunk_size: int = 2000) -> List[Chunk]:
-    res: List[Chunk] = []
+def chunking_text_string_file(file_path: str, content: str, max_chunk_size: int = 2000) -> List[Chunk]:
+    result: List[Chunk] = []
 
-    # Small file: return a single chunk
     if len(content) <= max_chunk_size:
         if content.strip():
             obj = Chunk(
@@ -71,20 +78,20 @@ def chunk_text_file(file_path: str, content: str, max_chunk_size: int = 2000) ->
                 last_character_index=len(content),
                 chunk_type="text"
             )
-            res.append(obj)
-        return res
+            result.append(obj)
+        return result
 
-    pattern_of_split = r'(?=^#{1,3} |\n\n)'
+    pattern_of_split = r"(?=^#{1,3} |\n\n)"
     lst = re.split(pattern_of_split, content, flags=re.MULTILINE)
     chunk = ""
     start = 0
 
-    for ele in lst:
-        if ele == "":
+    for element in lst:
+        if element == "":
             continue
 
-        if len(chunk) + len(ele) <= max_chunk_size:
-            chunk += ele
+        if len(chunk) + len(element) <= max_chunk_size:
+            chunk += element
 
         else:
             if chunk.strip():
@@ -95,24 +102,17 @@ def chunk_text_file(file_path: str, content: str, max_chunk_size: int = 2000) ->
                     last_character_index=start + len(chunk),
                     chunk_type="text"
                 )
-                res.append(obj)
+                result.append(obj)
 
-            if len(ele) > max_chunk_size:
-                inner_chunks = split_large_chunk(
-                    file_path=file_path,
-                    content=ele,
-                    start_offset=start + len(chunk),
-                    max_chunk_size=max_chunk_size,
-                    chunk_type="text"
-                )
-
-                res.extend(inner_chunks)
-                start = start + len(chunk) + len(ele)
+            if len(element) > max_chunk_size:
+                inner_chunks = split_large_chunk(file_path, element, start + len(chunk), max_chunk_size, "text")
+                result.extend(inner_chunks)
+                start = start + len(chunk) + len(element)
                 chunk = ""
 
             else:
                 start = start + len(chunk)
-                chunk = ele
+                chunk = element
 
     if chunk.strip():
         obj = Chunk(
@@ -122,16 +122,16 @@ def chunk_text_file(file_path: str, content: str, max_chunk_size: int = 2000) ->
             last_character_index=start + len(chunk),
             chunk_type="text"
         )
-        res.append(obj)
-    return res
+        result.append(obj)
+    return result
 
 
 
 
 
 
-def chunk_python_file(file_path: str, content: str, max_chunk_size: int = 2000) -> List[Chunk]:
-    res: List[Chunk] = []
+def chunk_code_string_file(file_path: str, content: str, max_chunk_size: int = 2000) -> List[Chunk]:
+    result: List[Chunk] = []
     
     try:
 
@@ -143,10 +143,10 @@ def chunk_python_file(file_path: str, content: str, max_chunk_size: int = 2000) 
                 top_level.append(node)
         
         if not top_level:
-            return chunk_text_file(file_path, content, max_chunk_size)
+            return chunking_text_string_file(file_path, content, max_chunk_size)
         
         lines = content.split("\n")
-        offsets = lines_offsets(lines)
+        offsets = offset_lines_func(lines)
 
         for node in top_level:
             start_line = node.lineno - 1
@@ -163,17 +163,16 @@ def chunk_python_file(file_path: str, content: str, max_chunk_size: int = 2000) 
             if len(node_content) > max_chunk_size:
                 inner_chunks = split_large_chunk(file_path, node_content, start_char, max_chunk_size, "python")
                 if len(inner_chunks) > 0:
-                    res.extend(inner_chunks)
-            
+                    result.extend(inner_chunks)
             else:
-                obj = obj = Chunk(
+                obj = Chunk(
                 file_path=file_path,
                 content=node_content,
                 first_character_index=start_char,
                 last_character_index=end_char,
                 chunk_type="python"
             )
-                res.append(obj)
+                result.append(obj)
 
         if top_level:
             first_node_start_index = offsets[top_level[0].lineno - 1]
@@ -181,15 +180,15 @@ def chunk_python_file(file_path: str, content: str, max_chunk_size: int = 2000) 
                 above_data = content[:first_node_start_index].strip()
                 if above_data:
                     above_chunks = split_large_chunk(file_path, above_data, 0, max_chunk_size, "python")
-                    res = above_chunks + res
+                    result = above_chunks + result
 
     except SyntaxError:
-        return chunk_text_file(file_path, content, max_chunk_size)
+        return chunking_text_string_file(file_path, content, max_chunk_size)
     
-    if not res:
-        return chunk_text_file(file_path, content, max_chunk_size)
+    if not result:
+        return chunking_text_string_file(file_path, content, max_chunk_size)
     
-    return res
+    return result
 
 
 
@@ -197,7 +196,7 @@ def chunk_python_file(file_path: str, content: str, max_chunk_size: int = 2000) 
 def chunk_repository(repo_path: str, max_chunk_size: int = 2000) -> List[Chunk]:
 
     res_output: List[Chunk] = []
-    all_files = []
+    all_files_path = []
 
     for root, dirs, files in os.walk(repo_path):
         dirs[:] = [d for d in dirs if not d.startswith(".") and d not in {"__pycache__", ".git"}]
@@ -211,23 +210,23 @@ def chunk_repository(repo_path: str, max_chunk_size: int = 2000) -> List[Chunk]:
                 continue
 
             full_path_from_data_root = os.path.join(root, file)
-            all_files.append(full_path_from_data_root)
+            all_files_path.append(full_path_from_data_root)
 
-    for the_path in tqdm(all_files, desc="Currently Chunking Progress"):
+    for the_path in tqdm(all_files_path, desc="Currently Chunking Progress"):
         try:
-            with open(the_path, "r") as f:
-                content_data = f.read()
-                
-            if not content_data.strip():
+            with open(the_path, "r", encoding="utf-8", errors="ignore") as f:
+                content_file_data = f.read()
+
+            if not content_file_data.strip():
                 continue
             
             extention = os.path.splitext(the_path)[1].lower()
             
             if extention in PYTHON_EXTENSIONS:
-                res_chunks = chunk_python_file(the_path, content_data, max_chunk_size)
+                res_chunks = chunk_code_string_file(the_path, content_file_data, max_chunk_size)
                 
             if extention in TEXT_EXTENSIONS:
-                res_chunks = chunk_text_file(the_path, content_data, max_chunk_size)
+                res_chunks = chunking_text_string_file(the_path, content_file_data, max_chunk_size)
             
             res_output.extend(res_chunks)
             
@@ -236,28 +235,8 @@ def chunk_repository(repo_path: str, max_chunk_size: int = 2000) -> List[Chunk]:
         
     return res_output
 
-            
-            
-                
-                
         
 
 
 
 print(len(chunk_repository("data/raw/vllm-0.10.1")))
-
-
-#             ext = os.path.splitext(fpath)[1].lower()
-#             if ext in PYTHON_EXTENSIONS:
-#                 chunks = chunk_python_file(fpath, content, max_chunk_size)
-#             else:
-#                 chunks = chunk_text_file(fpath, content, max_chunk_size)
-
-#             all_chunks.extend(chunks)
-
-#         except Exception as e:
-#             print(f"Warning: could not process {fpath}: {e}")
-
-#     return all_chunks
-
-
