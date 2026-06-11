@@ -239,9 +239,3 @@ def chunk_repository(repo_path: str, max_chunk_size: int = 2000) -> List[Chunk]:
             print(f"Error: While Process in Chunking Stage, Reason {err}")
         
     return res_output
-
-
-
-
-
-print(len(chunk_repository("data/raw/vllm-0.10.1")))
