@@ -138,20 +138,3 @@ def retrieve(query: str, bm25: BM25Okapi, chunks: List[Chunk], k: int = 10) -> L
 
     return result[:k]
 
-
-
-
-
-
-
-
-
-res = retrieve("paged attention implementation", load_indexed_data_from_disk()[0], load_indexed_data_from_disk()[1])
-
-print("length : %d\n\n" % len(res))
-
-for o in res:
-    print("start: %d" % o.first_character_index)
-    print("end: %d" % o.last_character_index)
-    print("file: %s" % o.file_path)
-    print("="*50)
