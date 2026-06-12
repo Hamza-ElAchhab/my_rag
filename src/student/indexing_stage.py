@@ -5,11 +5,15 @@ from student.chunking_data import chunk_repository
 import json
 from tqdm import tqdm
 from rank_bm25 import BM25Okapi
+import pickle
+from typing import Tuple
+from student.classes_types import Chunk, MinimalSource
+import numpy
 
 
 CHUNKS_PATH = "data/processed/chunks/chunks.json"
 BM25_INDEX_PATH = "data/processed/bm25_index/bm25.pkl"
-CORPUS_PATH = "data/processed/bm25_index/corpus.pkl"
+TOKENS_LISTS = "data/processed/bm25_index/tokenslists.pkl"
 
 
 
@@ -65,10 +69,89 @@ def build_the_indexed_stock(repo_path: str = "data/raw/vllm-0.10.1", max_chunk_s
 
     bm25_result = BM25Okapi(tokens_list_result)
     
-    print(type(bm25_result))
+    with open(BM25_INDEX_PATH, "wb") as file:
+        binarries_bytes = pickle.dumps(bm25_result)
+        file.write(binarries_bytes)
+        print(f"\n\nCREATED BM25 FILE DATABASE. path {BM25_INDEX_PATH}\n")
+
+    # cache memory if data lose, and for not create tokens again
+    with open(TOKENS_LISTS, "wb") as file:
+        binarries_bytes = pickle.dumps(tokens_list_result)
+        file.write(binarries_bytes)
+        print(f"CREATED CACHE MEMORY FILE FOR TOKENS. path {TOKENS_LISTS}\n")
+    print()
+    print("="*62)
+    print("Ingestion complete! data saved under root: data/processed/...")
+    print("="*62)
+    print()
+
+
+
+
+
+#prepare for retrival
+#and retrival
+#i think these should put them in a single file
+
+def load_indexed_data_from_disk() -> Tuple[BM25Okapi, List[Chunk]]:
+    if not os.path.exists(BM25_INDEX_PATH) or not os.path.exists(CHUNKS_PATH):
+        raise FileNotFoundError("Error, Program Still Does not Have any indexed data")
     
+    with open(BM25_INDEX_PATH, "rb") as file:
+        bm25 = pickle.loads(file.read())
+
+    with open(CHUNKS_PATH, "r", encoding="utf-8") as file:
+        chunks_as_string = file.read()
+        list_of_chunks = json.loads(chunks_as_string)
     
+    list_of_chunks_obj = []
+    for ch_dict in list_of_chunks:
+        list_of_chunks_obj.append(Chunk(**ch_dict))
     
+    return bm25, list_of_chunks_obj
+
+
+
+def retrieve(query: str, bm25: BM25Okapi, chunks: List[Chunk], k: int = 10) -> List[MinimalSource]:
+
+    tokenize_query = my_tokenizer(query)
+    scores = bm25.get_scores(tokenize_query)
     
+    best_k_indexes = numpy.argsort(scores)[::-1][:k]
     
-build_the_indexed_stock()
+    result = []
+    scores_cache: set = set()
+    
+    for idx in best_k_indexes:
+        chunk_obj = chunks[idx]
+
+        build_key = (chunk_obj.file_path, chunk_obj.first_character_index, chunk_obj.last_character_index)
+        if build_key in scores_cache:
+            continue
+        scores_cache.add(build_key)
+        
+        obj = MinimalSource(file_path=chunk_obj.file_path,
+                            first_character_index=chunk_obj.first_character_index,
+                            last_character_index=chunk_obj.last_character_index
+                        )
+        result.append(obj)
+
+    return result[:k]
+
+
+
+
+
+
+
+
+
+res = retrieve("paged attention implementation", load_indexed_data_from_disk()[0], load_indexed_data_from_disk()[1])
+
+print("length : %d\n\n" % len(res))
+
+for o in res:
+    print("start: %d" % o.first_character_index)
+    print("end: %d" % o.last_character_index)
+    print("file: %s" % o.file_path)
+    print("="*50)
