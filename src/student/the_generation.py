@@ -54,14 +54,16 @@ def get_content_from_source_obj(source_obj: MinimalSource, max_context_length: i
 
 
 
-def generate_the_answer(user_question: str, sources: List[MinimalSource], max_context_length: int = 2000, max_new_tokens: int = 256) -> None:
+def generate_the_answer(user_question: str, sources: List[MinimalSource],
+                        max_context_length: int = 2000, max_new_tokens: int = 256
+    ) -> None:
     
     loading_the_model()
     
     list_of_readed_contents = []
     
     i = 1
-    for source_obj in sources[:6]:
+    for source_obj in sources[:5]:
         the_content = get_content_from_source_obj(source_obj, max_context_length)
         if the_content:
             list_of_readed_contents.append(f"[Source {i+1}: {source_obj.file_path}]\n{the_content}")
@@ -94,7 +96,7 @@ def generate_the_answer(user_question: str, sources: List[MinimalSource], max_co
         inputs = {k: v.to(device) for k, v in inputs.items()}
         
         with torch.no_grad():
-            outputs = _model.generate(  # type: ignore
+            outputs = model.generate(  # type: ignore
                 **inputs,
                 max_new_tokens=max_new_tokens,
                 do_sample=False,
