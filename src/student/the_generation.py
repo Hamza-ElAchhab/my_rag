@@ -59,28 +59,26 @@ def generate_the_answer(user_question: str, sources: List[MinimalSource],
     ) -> None:
     
     loading_the_model()
-    
+    print("MODEL READY")
+
+
+
     list_of_readed_contents = []
     
     i = 1
-    for source_obj in sources[:5]:
+    for source_obj in sources[:10]:
         the_content = get_content_from_source_obj(source_obj, max_context_length)
         if the_content:
             list_of_readed_contents.append(f"[Source {i+1}: {source_obj.file_path}]\n{the_content}")
+        i += 1
     
     big_marge_context = "\n\n".join(list_of_readed_contents)
+    print("CONTEXT BUILT")
+    print(big_marge_context[:500])
+
+
 
     the_prompt = f"""
-    You are a code assistant specialized in understanding software repositories.
-
-    Answer the question using ONLY the provided context.
-
-    Rules:
-    - Do not use external knowledge.
-    - If the answer is not in the context, say "I don't know based on the provided context".
-    - Keep the answer concise and technical.
-    - Mention relevant source file paths when possible.
-
     Context:
     {big_marge_context}
 
@@ -96,7 +94,11 @@ def generate_the_answer(user_question: str, sources: List[MinimalSource],
         inputs = {k: v.to(device) for k, v in inputs.items()}
         
         with torch.no_grad():
-            outputs = model.generate(  # type: ignore
+            print("START GENERATION")
+
+
+
+            outputs = model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,
                 do_sample=False,
@@ -104,10 +106,14 @@ def generate_the_answer(user_question: str, sources: List[MinimalSource],
                 top_p=None,
                 pad_token_id=tokenizer.eos_token_id,  # type: ignore
             )
+            print("GENERATION FINISHED")
+
+
+
         
         input_len = inputs["input_ids"].shape[1]
         new_tokens = outputs[0][input_len:]
-        answer = tokenizer.decode(new_tokens, skip_special_tokens=True)  # type: ignore
+        answer = tokenizer.decode(new_tokens, skip_special_tokens=True)
         return answer.strip()
 
     except Exception as e:
